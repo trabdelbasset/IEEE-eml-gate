@@ -20,7 +20,6 @@ project:
     - "tt_um_eml_gate.v"
     - "eml_serial_gate.v"
     - "eml_gate_top.v"
-    - "eml_gate.v"
     - "fp_mul_seq.v"
     - "cordic_hyp.v"
 
