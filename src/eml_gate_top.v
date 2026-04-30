@@ -1,8 +1,5 @@
 // ============================================================================
-// eml_gate_top.v 
-//
-// This module merges eml_gate.v into the top-level dispatcher to ensure 
-// exactly ONE sequential multiplier and ONE CORDIC engine are used.
+// eml_gate_top.v
 //
 // Native kernels:
 //   EXP, LOG, SIN, COS, ATAN, ADD, SUB, MUL, RAW_EML
@@ -62,9 +59,9 @@ module eml_gate_top (
     // Shared Work Registers
     // -----------------------------------------------------------------------
     reg signed [`Q_WIDTH-1:0] reg_x;
-    reg signed [`Q_WIDTH-1:0] reg_work_0; 
-    reg signed [`Q_WIDTH-1:0] reg_work_1; 
-    reg signed [`Q_WIDTH-1:0] reg_work_2; 
+    reg signed [`Q_WIDTH-1:0] reg_work_0;
+    reg signed [`Q_WIDTH-1:0] reg_work_1;
+    reg signed [`Q_WIDTH-1:0] reg_work_2;
     reg signed [7:0]          reg_k_0;
     reg signed [7:0]          reg_k_1;
     reg                       flag_0;
@@ -193,7 +190,7 @@ module eml_gate_top (
                         domain_error <= 1'b0;
                         overflow     <= 1'b0;
                         error        <= 1'b0;
-                        
+
                         case (func_id)
                             FUNC_ADD: begin
                                 result_r <= sat_wide_to_fp(add_wide);
@@ -243,12 +240,12 @@ module eml_gate_top (
                                 end else begin
                                     // Setup for EML core
                                     reg_x      <= (func_id == FUNC_LOG) ? `FP_ONE : x_in;
-                                    reg_work_0 <= (func_id == FUNC_EXP) ? `FP_ONE : 
+                                    reg_work_0 <= (func_id == FUNC_EXP) ? `FP_ONE :
                                                   (func_id == FUNC_LOG) ? x_in     : y_in;
                                     reg_k_0    <= 8'sd0;
                                     flag_0     <= 1'b0; // norm_done
                                     flag_1     <= 1'b0; // mul_finished
-                                    
+
                                     // Start scaling multiplier: x_in * FP_INV_LN2
                                     mul_a_r    <= (func_id == FUNC_LOG) ? `FP_ONE : x_in;
                                     mul_b_r    <= `FP_INV_LN2;
@@ -312,7 +309,7 @@ module eml_gate_top (
                 S_EML_PREP_EXP: begin
                     // Round x_scaled to k_exp
                     reg_k_1 <= (reg_work_1[`Q_WIDTH-1] ? (reg_work_1 - `FP_HALF) : (reg_work_1 + `FP_HALF)) >>> `Q_FRAC;
-                    
+
                     // Start ln vectoring
                     cordic_mode_r <= 2'b01; // Vectoring
                     cordic_x_in_r <= reg_work_0 + `FP_ONE;
@@ -320,13 +317,13 @@ module eml_gate_top (
                     cordic_z_in_r <= `FP_ZERO;
                     cordic_start_r<= 1'b1;
                     flag_0        <= 1'b0; // cordic_finished
-                    
+
                     // Start ln integer mult: k_ln * FP_LN2
                     mul_a_r       <= (reg_k_0 > 8'sd15) ? `FP_POS_MAX : (reg_k_0 < -8'sd16) ? `FP_NEG_MAX : ($signed(reg_k_0) <<< `Q_FRAC);
                     mul_b_r       <= `FP_LN2;
                     mul_start_r   <= 1'b1;
                     flag_1        <= 1'b0; // mul_finished
-                    
+
                     state <= S_EML_MUL_LN;
                 end
 
