@@ -33,7 +33,7 @@ module tt_um_eml_gate (
     assign uio_out = 8'd0;
     assign uio_oe  = 8'd0;
 
-    wire _unused = &{ena, clk, rst_n, ui_in[7:3], uio_in, 1'b0};
+    wire _unused = &{ena, ui_in[7:3], uio_in, 1'b0};
 
     eml_serial_gate u_eml_serial_gate (
         .clk    (clk),

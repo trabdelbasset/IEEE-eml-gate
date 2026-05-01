@@ -41,10 +41,6 @@ module eml_serial_gate (
     reg [2:0] rx_byte_count_reg;
     reg       frame_ready_reg;
 
-    reg        sticky_error_reg;
-    reg        sticky_domain_reg;
-    reg        sticky_overflow_reg;
-
     reg [7:0]  tx_byte_shift_reg;
     reg [5:0]  tx_bit_count_reg;
     reg [2:0]  tx_byte_idx_reg;
@@ -99,9 +95,6 @@ module eml_serial_gate (
             gate_func_reg  <= 4'd0;
             gate_x_reg     <= `FP_ZERO;
             gate_y_reg     <= `FP_ZERO;
-            sticky_error_reg    <= 1'b0;
-            sticky_domain_reg   <= 1'b0;
-            sticky_overflow_reg <= 1'b0;
             op_a_reg   <= 16'd0;
             op_b_reg   <= 16'd0;
         end else begin
@@ -166,9 +159,6 @@ module eml_serial_gate (
                             error <= 1'b1;
                         end else begin
                             error <= 1'b0;
-                            sticky_error_reg    <= 1'b0;
-                            sticky_domain_reg   <= 1'b0;
-                            sticky_overflow_reg <= 1'b0;
                             frame_ready_reg     <= 1'b0;
                             
                             gate_func_reg <= FUNC_RAW_EML;

@@ -19,15 +19,16 @@ module eml_gate_top (
     localparam [3:0] FUNC_RAW_EML = 4'd15;
 
     localparam [3:0] S_IDLE            = 4'd0;
-    localparam [3:0] S_EML_NORM        = 4'd1;
-    localparam [3:0] S_EML_PREP_EXP    = 4'd2;
-    localparam [3:0] S_EML_MUL_LN      = 4'd3;
-    localparam [3:0] S_EML_MUL_EXP     = 4'd4;
-    localparam [3:0] S_EML_PREP_CORDIC = 4'd5;
-    localparam [3:0] S_EML_CORDIC_EXP  = 4'd6;
-    localparam [3:0] S_EML_EXP_SHIFT   = 4'd7;
-    localparam [3:0] S_EML_FINISH      = 4'd8;
-    localparam [3:0] S_DONE            = 4'd9;
+    localparam [3:0] S_EML_SCALE_X     = 4'd1;
+    localparam [3:0] S_EML_NORM        = 4'd2;
+    localparam [3:0] S_EML_WAIT_LN_MUL = 4'd3;
+    localparam [3:0] S_EML_WAIT_LN_COR = 4'd4;
+    localparam [3:0] S_EML_MUL_EXP     = 4'd5;
+    localparam [3:0] S_EML_PREP_CORDIC = 4'd6;
+    localparam [3:0] S_EML_CORDIC_EXP  = 4'd7;
+    localparam [3:0] S_EML_EXP_SHIFT   = 4'd8;
+    localparam [3:0] S_EML_FINISH      = 4'd9;
+    localparam [3:0] S_DONE            = 4'd10;
 
     reg [3:0] state;
 
@@ -35,8 +36,6 @@ module eml_gate_top (
     reg signed [`Q_WIDTH-1:0] reg_work_0; 
     reg signed [`Q_WIDTH-1:0] reg_work_1; 
     reg signed [5:0]          reg_k;
-    reg                       flag_0;
-    reg                       flag_1;
 
     reg                        mul_start_r;
     reg  signed [`Q_WIDTH-1:0] mul_a_r;
@@ -134,7 +133,6 @@ module eml_gate_top (
                         domain_error <= 1'b0;
                         overflow     <= 1'b0;
                         error        <= 1'b0;
-                        
                         if (func_id != FUNC_RAW_EML) begin
                             reg_work_1 <= `FP_ZERO;
                             error    <= 1'b1;
@@ -147,87 +145,73 @@ module eml_gate_top (
                             reg_x      <= x_in;
                             reg_work_0 <= y_in;
                             reg_k      <= 6'sd0;
-                            flag_0     <= 1'b0;
-                            flag_1     <= 1'b0;
-
                             mul_a_r    <= x_in;
                             mul_b_r    <= `FP_INV_LN2;
                             mul_start_r<= 1'b1;
-                            state      <= S_EML_NORM;
+                            state      <= S_EML_SCALE_X;
                         end
+                    end
+                end
+
+                S_EML_SCALE_X: begin
+                    if (mul_done) begin
+                        reg_work_1 <= mul_result; // k_exp scaled
+                        state      <= S_EML_NORM;
                     end
                 end
 
                 S_EML_NORM: begin
-                    if (mul_done) flag_1 <= 1'b1;
-                    if (!flag_0) begin
-                        if (reg_work_0 <= `FP_ZERO) begin
-                            reg_work_0 <= `FP_ONE;
-                            reg_k      <= -6'sd31;
-                            flag_0     <= 1'b1;
-                        end else if (reg_work_0 >= `FP_TWO) begin
-                            reg_work_0 <= reg_work_0 >>> 1;
-                            reg_k      <= reg_k + 6'sd1;
-                        end else if (reg_work_0 < `FP_ONE) begin
-                            reg_work_0 <= reg_work_0 <<< 1;
-                            reg_k      <= reg_k - 6'sd1;
-                        end else if (reg_k >= 6'sd31 || reg_k <= -6'sd31) begin
-                            flag_0     <= 1'b1;
-                        end else begin
-                            flag_0     <= 1'b1;
-                        end
-                    end
-                    if (flag_0 && (flag_1 || mul_done)) begin
-                        reg_work_1 <= mul_result;
-                        state      <= S_EML_PREP_EXP;
+                    if (reg_work_0 >= `FP_TWO) begin
+                        reg_work_0 <= reg_work_0 >>> 1;
+                        reg_k      <= reg_k + 6'sd1;
+                    end else if (reg_work_0 < `FP_ONE) begin
+                        reg_work_0 <= reg_work_0 <<< 1;
+                        reg_k      <= reg_k - 6'sd1;
+                    end else begin
+                        mul_a_r       <= ($signed(reg_k) <<< `Q_FRAC);
+                        mul_b_r       <= `FP_LN2;
+                        mul_start_r   <= 1'b1;
+                        state         <= S_EML_WAIT_LN_MUL;
                     end
                 end
 
-                S_EML_PREP_EXP: begin
-                    reg_k <= (reg_work_1[`Q_WIDTH-1] ? (reg_work_1 - `FP_HALF) : (reg_work_1 + `FP_HALF)) >>> `Q_FRAC;
-                    
-                    cordic_mode_r <= 2'b01;
-                    cordic_x_in_r <= reg_work_0 + `FP_ONE;
-                    cordic_y_in_r <= reg_work_0 - `FP_ONE;
-                    cordic_z_in_r <= `FP_ZERO;
-                    cordic_start_r<= 1'b1;
-                    flag_0        <= 1'b0;
-                    
-                    mul_a_r       <= ($signed(reg_k) <<< `Q_FRAC);
-                    mul_b_r       <= `FP_LN2;
-                    mul_start_r   <= 1'b1;
-                    flag_1        <= 1'b0;
-                    
-                    state <= S_EML_MUL_LN;
+                S_EML_WAIT_LN_MUL: begin
+                    if (mul_done) begin
+                        // Start CORDIC for ln(m)
+                        cordic_mode_r <= 2'b01;
+                        cordic_x_in_r <= reg_work_0 + `FP_ONE;
+                        cordic_y_in_r <= reg_work_0 - `FP_ONE;
+                        cordic_z_in_r <= `FP_ZERO;
+                        cordic_start_r<= 1'b1;
+                        state         <= S_EML_WAIT_LN_COR;
+                    end
                 end
 
-                S_EML_MUL_LN: begin
-                    if (cordic_done) flag_0 <= 1'b1;
-                    if (mul_done)    flag_1 <= 1'b1;
-                    if ((flag_0 || cordic_done) && (flag_1 || mul_done)) begin
+                S_EML_WAIT_LN_COR: begin
+                    if (cordic_done) begin
                         reg_work_0 <= sat_wide_to_fp(ln_full_wide);
-                        
-                        mul_a_r    <= ($signed(reg_k) <<< `Q_FRAC);
-                        mul_b_r    <= `FP_LN2;
-                        mul_start_r<= 1'b1;
-                        state      <= S_EML_MUL_EXP;
+                        // Calculate k_exp from scaled x (reg_work_1)
+                        reg_k <= (reg_work_1[`Q_WIDTH-1] ? (reg_work_1 - `FP_HALF) : (reg_work_1 + `FP_HALF)) >>> `Q_FRAC;
+                        state <= S_EML_MUL_EXP;
                     end
                 end
 
                 S_EML_MUL_EXP: begin
-                    if (mul_done) begin
-                        reg_work_1 <= reg_x - mul_result;
-                        state      <= S_EML_PREP_CORDIC;
-                    end
+                    mul_a_r    <= ($signed(reg_k) <<< `Q_FRAC);
+                    mul_b_r    <= `FP_LN2;
+                    mul_start_r<= 1'b1;
+                    state      <= S_EML_PREP_CORDIC;
                 end
 
                 S_EML_PREP_CORDIC: begin
-                    cordic_mode_r <= 2'b00;
-                    cordic_x_in_r <= `CORDIC_INV_GAIN_HYP;
-                    cordic_y_in_r <= `FP_ZERO;
-                    cordic_z_in_r <= reg_work_1;
-                    cordic_start_r<= 1'b1;
-                    state         <= S_EML_CORDIC_EXP;
+                    if (mul_done) begin
+                        cordic_mode_r <= 2'b00;
+                        cordic_x_in_r <= `CORDIC_INV_GAIN_HYP;
+                        cordic_y_in_r <= `FP_ZERO;
+                        cordic_z_in_r <= reg_x - mul_result; // r = x - k*ln2
+                        cordic_start_r<= 1'b1;
+                        state         <= S_EML_CORDIC_EXP;
+                    end
                 end
 
                 S_EML_CORDIC_EXP: begin
@@ -263,10 +247,7 @@ module eml_gate_top (
 
                 default: state <= S_IDLE;
             endcase
-
-
             if (start && (state != S_IDLE)) error <= 1'b1;
         end
     end
-
 endmodule
