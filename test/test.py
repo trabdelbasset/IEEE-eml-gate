@@ -245,7 +245,7 @@ async def eval_program_host_stack(dut, program, x_val, y_val, prefer_hardware=Fa
 
 @cocotb.test()
 async def test_protocol_rejects_early_start(dut):
-    clock = Clock(dut.clk, 20, units="ns")
+    clock = Clock(dut.clk, 100, units="ns")
     cocotb.start_soon(clock.start())
     await reset_dut(dut)
 
@@ -256,7 +256,7 @@ async def test_protocol_rejects_early_start(dut):
 
 @cocotb.test()
 async def test_native_kernel_set(dut):
-    clock = Clock(dut.clk, 20, units="ns")
+    clock = Clock(dut.clk, 100, units="ns")
     cocotb.start_soon(clock.start())
     await reset_dut(dut)
 
@@ -272,7 +272,7 @@ async def test_native_kernel_set(dut):
 
 @cocotb.test()
 async def test_protocol_error_on_too_many_bytes(dut):
-    clock = Clock(dut.clk, 20, units="ns")
+    clock = Clock(dut.clk, 100, units="ns")
     cocotb.start_soon(clock.start())
     await reset_dut(dut)
 
@@ -285,7 +285,7 @@ async def test_protocol_error_on_too_many_bytes(dut):
 
 @cocotb.test()
 async def test_host_offloaded_complex_eml_primitive(dut):
-    clock = Clock(dut.clk, 20, units="ns")
+    clock = Clock(dut.clk, 100, units="ns")
     cocotb.start_soon(clock.start())
     await reset_dut(dut)
 
@@ -303,7 +303,7 @@ async def test_host_offloaded_complex_eml_primitive(dut):
 
 @cocotb.test()
 async def test_host_offloaded_eml_programs_all_functions(dut):
-    clock = Clock(dut.clk, 20, units="ns")
+    clock = Clock(dut.clk, 100, units="ns")
     cocotb.start_soon(clock.start())
     await reset_dut(dut)
 
