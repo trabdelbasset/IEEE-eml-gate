@@ -1,8 +1,21 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# Tiny Tapeout Verilog Project Template
+# Host-First EML Tiny Tapeout
 
-- [Read the documentation for project](docs/info.md)
+- [Project overview](docs/info.md)
+- [Architecture notes](docs/compromise_architecture.md)
+- [Testbench notes](test/README.md)
+
+## Project Summary
+
+This repository implements a Tiny Tapeout-scale version of the EML idea from
+the paper "All elementary functions from a single operator".
+
+The architecture is **host-first**:
+
+- the **chip** implements a lean real `RAW_EML` primitive: `eml(x,y) = exp(x) - ln(y)`
+- the **host** manages the EML stack and evaluates full RPN programs off-chip
+- the **protocol** is a compact 5-byte serial frame (SOF + 16-bit X + 16-bit Y)
 
 ## What is Tiny Tapeout?
 

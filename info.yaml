@@ -3,7 +3,7 @@ project:
   title:        "EML Serial Coprocessor"      # Project title
   author:       "TAOUINAR ABDELBASSET"      # Your name
   discord:      "651881618373476362"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  "Serialized host-managed EML coprocessor"      # One line description of what your project does
+  description:  "Compact serial EML primitive (exp(x)-ln(y)) for host-offloaded function evaluation"      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
   clock_hz:     50000000       # Clock frequency in Hz (or 0 if not applicable)
 
