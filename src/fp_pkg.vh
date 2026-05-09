@@ -25,6 +25,8 @@
 `define FP_NEG_INF         20'h80001
 `define FP_NAN_VAL         20'h7FFFE
 
+`define CORDIC_N             14
 `define CORDIC_INV_GAIN_HYP  20'sd19783  
+`define CORDIC_INV_GAIN_CIRC 20'sd9949   
 
 `endif
