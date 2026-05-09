@@ -1,23 +1,32 @@
+/* EML Package Header */
 `ifndef FP_PKG_VH
 `define FP_PKG_VH
 
 `define Q_INT    6
-`define Q_FRAC   10
+`define Q_FRAC   14
 `define Q_WIDTH  (`Q_INT + `Q_FRAC)
 
-`define FP_ZERO      16'sd0
-`define FP_ONE       16'sd1024
-`define FP_TWO       16'sd2048
-`define FP_HALF      16'sd512
-`define FP_LN2       16'sd710
-`define FP_INV_LN2   16'sd1477
+`define CORDIC_FRAC   14  
+`define CORDIC_WIDTH  20  
 
-`define FP_SHIFT_SAT_POS   16'sd16383
-`define FP_SHIFT_SAT_NEG  -16'sd16384
-`define FP_POS_MAX         16'sd32767
-`define FP_NEG_MAX        -16'sd32768
+`define FP_ZERO      20'sd0
+`define FP_ONE       20'sd16384        
+`define FP_TWO       20'sd32768        
+`define FP_HALF      20'sd8192         
+`define FP_LN2       20'sd11356        
+`define FP_INV_LN2   20'sd23637        
 
-`define CORDIC_N  12
-`define CORDIC_INV_GAIN_HYP   16'sd1236
+`define FP_SHIFT_SAT_POS   20'sd262143
+`define FP_SHIFT_SAT_NEG  -20'sd262144
+`define FP_POS_MAX         20'sd524287
+`define FP_NEG_MAX        -20'sd524288
+
+`define FP_POS_INF         20'h7FFFF
+`define FP_NEG_INF         20'h80001
+`define FP_NAN_VAL         20'h7FFFE
+
+`define CORDIC_N             14
+`define CORDIC_INV_GAIN_HYP  20'sd19783  
+`define CORDIC_INV_GAIN_CIRC 20'sd9949   
 
 `endif
