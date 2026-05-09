@@ -40,7 +40,6 @@ module eml_gate_top (
     reg [4:0]                 shift_cnt;
 
     localparam signed [`Q_WIDTH-1:0] INT_ZERO = `FP_ZERO;
-    localparam signed [`Q_WIDTH-1:0] INT_NEG_TEN = -20'sd163840;
 
     wire signed [`Q_WIDTH-1:0] reg_k_scaled =
         $signed({{(`Q_WIDTH-6){reg_k[5]}}, reg_k}) <<< `Q_FRAC;
@@ -113,7 +112,7 @@ module eml_gate_top (
     wire signed [`Q_WIDTH-1:0] exp_k_shifted = exp_k_rounded >>> `Q_FRAC;
 
     wire signed [5:0] k_s = reg_k;
-    wire [5:0] neg_k_s = -k_s;
+    wire [5:0] neg_k_s = 6'sd0 - k_s;
     wire [4:0] k_abs = (k_s >= 0) ? k_s[4:0] : neg_k_s[4:0];
 
     wire x_is_pos_inf = (x_in == `FP_POS_INF);
@@ -158,7 +157,7 @@ module eml_gate_top (
                     if (start) begin
                         reg_x        <= x_in;
                         reg_work_0   <= y_in;
-                        reg_k        <= 0;
+                        reg_k        <= 6'sd0;
                         domain_error <= 1'b0;
                         overflow     <= 1'b0;
                         error        <= 1'b0;
@@ -188,10 +187,9 @@ module eml_gate_top (
                                     reg_work_1 <= `FP_NEG_INF;
                                     state <= S_DONE;
                                 end else if (x_is_neg_inf) begin
-                                    reg_x      <= INT_NEG_TEN;
+                                    reg_work_1 <= `FP_ZERO;
                                     reg_work_0 <= y_in;
                                     reg_k      <= 6'sd0;
-                                    reg_work_1 <= INT_NEG_TEN;
                                     state      <= S_EML_NORM;
                                 end else begin
                                     reg_k       <= 6'sd0;
