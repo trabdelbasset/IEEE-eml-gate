@@ -1,8 +1,10 @@
 # EML Gate — cocotb test suite. All exp/ln use chip hardware.
 import math
+
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
+
 from programs_list import programs
 
 CLOCK_UNIT = "unit" if cocotb.__version__.startswith("2") else "units"
@@ -16,30 +18,46 @@ OP_MUL = 0x01
 
 PI_CONST = 3.14159265
 
+
 def float_to_q6_14(val):
-    if isinstance(val, complex): val = val.real
-    if math.isnan(val): return 0x7FFFE
-    if val == math.inf or val > Q6_14_MAX: return 0x7FFFF
-    if val == -math.inf or val < Q6_14_MIN: return 0x80001
+    if isinstance(val, complex):
+        val = val.real
+    if math.isnan(val):
+        return 0x7FFFE
+    if val == math.inf or val > Q6_14_MAX:
+        return 0x7FFFF
+    if val == -math.inf or val < Q6_14_MIN:
+        return 0x80001
     scaled = round(val * 16384.0)
-    if scaled > 524287: return 0x7FFFF
-    if scaled < -524288: return 0x80001
-    if scaled < 0: scaled = (1 << 20) + scaled
+    if scaled > 524287:
+        return 0x7FFFF
+    if scaled < -524288:
+        return 0x80001
+    if scaled < 0:
+        scaled = (1 << 20) + scaled
     return scaled & 0xFFFFF
+
 
 def q6_14_to_float(val):
     val = val & 0xFFFFF
-    if val == 0x7FFFF: return math.inf
-    if val == 0x80001: return -math.inf
-    if val == 0x7FFFE: return math.nan
-    if val & 0x80000: val -= 1 << 20
+    if val == 0x7FFFF:
+        return math.inf
+    if val == 0x80001:
+        return -math.inf
+    if val == 0x7FFFE:
+        return math.nan
+    if val & 0x80000:
+        val -= 1 << 20
     return val / 16384.0
+
 
 def as_complex(val):
     return val if isinstance(val, complex) else complex(val)
 
+
 def uo_bits(dut):
     return int(dut.uo_out.value)
+
 
 async def spi_transfer(dut, data_bytes):
     ui_val = 0x04
@@ -68,6 +86,7 @@ async def spi_transfer(dut, data_bytes):
     await ClockCycles(dut.clk, 2)
     return miso_data
 
+
 async def reset_dut(dut):
     dut.ena.value = 1
     dut.ui_in.value = 0x04
@@ -77,6 +96,7 @@ async def reset_dut(dut):
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 5)
 
+
 async def wait_for_done(dut, limit=12000):
     for _ in range(limit):
         if (int(dut.uo_out.value) >> 2) & 1:
@@ -84,33 +104,45 @@ async def wait_for_done(dut, limit=12000):
         await ClockCycles(dut.clk, 1)
     raise AssertionError("Timed out waiting for done")
 
+
 async def chip_call(dut, opcode, x_f, y_f):
     x_bits = float_to_q6_14(x_f)
     y_bits = float_to_q6_14(y_f)
     cmd_byte = 0x80 | (opcode & 0x03)
-    frame = [cmd_byte,
-             (x_bits >> 16) & 0xFF, (x_bits >> 8) & 0xFF, x_bits & 0xFF,
-             (y_bits >> 16) & 0xFF, (y_bits >> 8) & 0xFF, y_bits & 0xFF]
+    frame = [
+        cmd_byte,
+        (x_bits >> 16) & 0xFF,
+        (x_bits >> 8) & 0xFF,
+        x_bits & 0xFF,
+        (y_bits >> 16) & 0xFF,
+        (y_bits >> 8) & 0xFF,
+        y_bits & 0xFF,
+    ]
     await spi_transfer(dut, frame)
     await wait_for_done(dut)
-    response = await spi_transfer(dut, [0]*7)
+    response = await spi_transfer(dut, [0] * 7)
     primary_bits = (response >> 24) & 0xFFFFF
     return q6_14_to_float(primary_bits)
+
 
 async def chip_eml(dut, x, y):
     return await chip_call(dut, OP_EML, x, y)
 
+
 async def chip_mul(dut, x, y):
     return await chip_call(dut, OP_MUL, x, y)
 
+
 async def chip_exp(dut, x):
     return await chip_eml(dut, x, 1.0)
+
 
 async def chip_ln(dut, y):
     if y <= 0.0:
         return -math.inf
     r = await chip_eml(dut, 0.0, y)
     return 1.0 - r
+
 
 async def complex_eml_chip(dut, a, b, debug=False):
     a_c = as_complex(a)
@@ -158,6 +190,7 @@ async def complex_eml_chip(dut, a, b, debug=False):
     result_imag = exp_imag - ln_imag
     return complex(result_real, result_imag)
 
+
 async def run_program_chip(dut, program, x_val, y_val, dbg=False):
     stack = []
     chip_nodes = 0
@@ -181,7 +214,6 @@ async def run_program_chip(dut, program, x_val, y_val, dbg=False):
     return stack[-1] if stack else complex(0), chip_nodes
 
 
-
 @cocotb.test()
 async def test_protocol_basic(dut):
     cocotb.start_soon(Clock(dut.clk, 20, **{CLOCK_UNIT: "ns"}).start())
@@ -198,6 +230,7 @@ async def test_protocol_basic(dut):
     await wait_for_done(dut)
     dut._log.info("PASS test_protocol_basic")
 
+
 @cocotb.test()
 async def test_chip_eml_scalar(dut):
     cocotb.start_soon(Clock(dut.clk, 20, **{CLOCK_UNIT: "ns"}).start())
@@ -208,6 +241,7 @@ async def test_chip_eml_scalar(dut):
     assert abs(got - expected) <= 0.05
     dut._log.info("PASS test_chip_eml_scalar")
 
+
 @cocotb.test()
 async def test_chip_mul(dut):
     cocotb.start_soon(Clock(dut.clk, 20, **{CLOCK_UNIT: "ns"}).start())
@@ -216,6 +250,7 @@ async def test_chip_mul(dut):
     dut._log.info(f"mul(2.5, 3.0): got={got:.4f} expected=7.5")
     assert abs(got - 7.5) <= 0.05
     dut._log.info("PASS test_chip_mul")
+
 
 @cocotb.test()
 async def test_chip_exp_ln_sweep(dut):
@@ -231,7 +266,6 @@ async def test_chip_exp_ln_sweep(dut):
     dut._log.info("PURE ASIC SWEEP: exp(x) and ln(x)")
     dut._log.info("=" * 60)
 
-
     dut._log.info("-- exp(x) sweep --")
     for x_10 in range(-30, 41, 5):
         x = x_10 / 10.0
@@ -244,8 +278,9 @@ async def test_chip_exp_ln_sweep(dut):
         if not ok:
             fails += 1
         status = "ok" if ok else "FAIL"
-        dut._log.info(f"  exp({x:+5.1f}): got={got:+10.4f} ref={ref:+10.4f} |err|={ae:.2e} {status}")
-
+        dut._log.info(
+            f"  exp({x:+5.1f}): got={got:+10.4f} ref={ref:+10.4f} |err|={ae:.2e} {status}"
+        )
 
     dut._log.info("-- ln(x) sweep --")
     ln_points = [0.1, 0.2, 0.5, 1.0, 1.5, 2.0, 2.71828, 5.0, 10.0, 20.0]
@@ -259,11 +294,14 @@ async def test_chip_exp_ln_sweep(dut):
         if not ok:
             fails += 1
         status = "ok" if ok else "FAIL"
-        dut._log.info(f"  ln({x:+7.3f}): got={got:+10.4f} ref={ref:+10.4f} |err|={ae:.2e} {status}")
+        dut._log.info(
+            f"  ln({x:+7.3f}): got={got:+10.4f} ref={ref:+10.4f} |err|={ae:.2e} {status}"
+        )
 
     dut._log.info(f"-- Sweep result: {total - fails}/{total} within tolerance --")
     assert fails <= 3, f"Too many ASIC sweep failures: {fails}/{total}"
     dut._log.info("PASS test_chip_exp_ln_sweep")
+
 
 @cocotb.test()
 async def test_all_38_functions(dut):
@@ -275,7 +313,7 @@ async def test_all_38_functions(dut):
     total_chip_nodes = 0
 
     dut._log.info("=" * 70)
-    dut._log.info("38-FUNCTION EML SWEEP — LEVEL B HONEST (x=0.5, y=0.5)")
+    dut._log.info("38-FUNCTION EML SWEEP — LEVEL B (x=0.5, y=0.5)")
     dut._log.info("  exp/ln: chip hardware | cos/sin/atan2: host (real HW limit)")
     dut._log.info("=" * 70)
 
@@ -328,17 +366,14 @@ async def test_all_38_functions(dut):
     dut._log.info("  Chip computes: exp(x), ln(y), x*y")
     dut._log.info("  Host computes: cos/sin for complex Euler rotation")
     dut._log.info("  Host computes: atan2 for complex phase angle")
-    dut._log.info("  No cmath.exp or cmath.log used anywhere")
     dut._log.info("=" * 70)
 
-    assert total_chip_nodes == sum(
-        e[4] for e in accurate + degraded + poor
-    )
+    assert total_chip_nodes == sum(e[4] for e in accurate + degraded + poor)
     assert len(accurate) >= 18, (
-        f"Only {len(accurate)}/18 minimum accurate. "
-        f"Poor: {[e[0] for e in poor]}"
+        f"Only {len(accurate)}/18 minimum accurate. Poor: {[e[0] for e in poor]}"
     )
     dut._log.info("PASS test_all_38_functions")
+
 
 def fmt(val):
     z = as_complex(val)
