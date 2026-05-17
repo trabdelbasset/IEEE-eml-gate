@@ -1,3 +1,4 @@
+// EML Gate — Sequential fixed-point multiplier. Booth-style shift-add in Q6.14.
 `include "fp_pkg.vh"
 
 module fp_mul_seq #(

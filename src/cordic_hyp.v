@@ -1,3 +1,4 @@
+// EML Gate — Hyperbolic CORDIC. Computes sinh/cosh (rotation) or atanh (vectoring).
 `include "fp_pkg.vh"
 
 module cordic_hyp (

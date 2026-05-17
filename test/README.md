@@ -1,47 +1,44 @@
-# Sample testbench for a Tiny Tapeout project
+# Test Suite
 
-This is a sample testbench for a Tiny Tapeout project. It uses [cocotb](https://docs.cocotb.org/en/stable/) to drive the DUT and check the outputs.
-See below to get started or for more information, check the [website](https://tinytapeout.com/hdl/testing/).
+cocotb-based tests for the EML accelerator. Compatible with cocotb 1.9
+and 2.0.
 
-## Setting up
+## Requirements
 
-1. Edit [Makefile](Makefile) and modify `PROJECT_SOURCES` to point to your Verilog files.
-2. Edit [tb.v](tb.v) and replace `tt_um_example` with your module name.
+- Icarus Verilog (`iverilog`)
+- Python 3.8+
+- cocotb (`pip install cocotb`)
 
-## How to run
-
-To run the RTL simulation:
-
-```sh
-make -B
-```
-
-To run gatelevel simulation, first harden your project and copy `../runs/wokwi/results/final/verilog/gl/{your_module_name}.v` to `gate_level_netlist.v`.
-
-Then run:
+## Running
 
 ```sh
-make -B GATES=yes
+make clean && make
 ```
 
-If you wish to save the waveform in VCD format instead of FST format, edit tb.v to use `$dumpfile("tb.vcd");` and then run:
+## Tests
 
-```sh
-make -B FST=
-```
+| Test | What it checks |
+|------|----------------|
+| `test_protocol_basic` | SPI rejects commands while busy |
+| `test_chip_eml_scalar` | `eml(0.5, 0.5)` matches `exp(0.5) - ln(0.5)` |
+| `test_chip_mul` | Multiply opcode: `2.5 × 3.0 = 7.5` |
+| `test_chip_exp_ln_sweep` | Pure hardware sweep of exp and ln |
+| `test_all_38_functions` | 38 elementary functions via EML RPN programs |
 
-This will generate `tb.vcd` instead of `tb.fst`.
+## How the test works
 
-## How to view the waveform file
+Every `exp(x)` in the test is computed by calling `chip_eml(x, 1.0)`.
+Every `ln(y)` is computed by calling `chip_eml(0, y)` and subtracting
+from 1. Every multiplication uses the chip multiply opcode. No
+`cmath.exp` or `cmath.log` is used.
 
-Using GTKWave
+The host uses `math.cos`, `math.sin`, and `math.atan2` only for
+complex-domain rotation. This is an architectural limitation of the
+real-only hardware, not a workaround.
 
-```sh
-gtkwave tb.fst tb.gtkw
-```
+## Expected results
 
-Using Surfer
-
-```sh
-surfer tb.fst
-```
+- 5/5 tests pass
+- exp/ln sweep: 23/25 within tolerance (2 overflow Q6.14 range)
+- 38-function sweep: 26/38 accurate (< 15% error), 3 degraded, 9 failed
+- Total chip calls: ~4730 EML/MUL operations

@@ -1,3 +1,4 @@
+// EML Gate — SPI transport layer. Accepts 56-bit frames, drives the EML engine.
 `include "fp_pkg.vh"
 
 module eml_spi_gate (

@@ -1,3 +1,4 @@
+// EML Gate — Tiny Tapeout wrapper. Maps SPI pins to the EML engine.
 `default_nettype none
 
 module tt_um_eml_gate (

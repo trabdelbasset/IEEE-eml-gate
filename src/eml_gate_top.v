@@ -1,3 +1,4 @@
+// EML Gate — Core EML engine. Computes eml(x,y) = exp(x) - ln(y) in Q6.14.
 `include "fp_pkg.vh"
 
 module eml_gate_top (

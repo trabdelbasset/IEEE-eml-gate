@@ -1,55 +1,45 @@
 ![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
 
-# Host-First EML Tiny Tapeout
+# EML Gate for Tiny Tapeout
 
-- [Project overview](docs/info.md)
-- [Architecture notes](docs/compromise_architecture.md)
-- [Testbench notes](test/README.md)
+A hardware implementation of the EML (Exp-Minus-Log) operator from
+[arXiv:2603.21852](https://arxiv.org/abs/2603.21852v2).
 
-## Project Summary
+The chip computes `eml(x, y) = exp(x) - ln(y)` in Q6.14 fixed-point
+arithmetic using a shared sequential multiplier and hyperbolic CORDIC.
+A host controller composes this single primitive into higher functions
+(sin, cos, sqrt, pow, etc.) via RPN programs.
 
-This repository implements a Tiny Tapeout-scale version of the EML idea from
-the paper "All elementary functions from a single operator".
+## Architecture
 
-The architecture is **host-first**:
+| Layer | Role |
+|-------|------|
+| **Chip** | Real-only `eml(x,y)` and `mul(x,y)` via SPI |
+| **Host** | RPN stack interpreter, complex arithmetic |
 
-- the **chip** implements a lean real `RAW_EML` primitive: `eml(x,y) = exp(x) - ln(y)`
-- the **host** manages the EML stack and evaluates full RPN programs off-chip
-- the **protocol** is a compact 5-byte serial frame (SOF + 16-bit X + 16-bit Y)
+## Pin Map
 
-## What is Tiny Tapeout?
+| Pin | Direction | Function |
+|-----|-----------|----------|
+| `ui_in[0]` | Input | MOSI |
+| `ui_in[1]` | Input | SCLK |
+| `ui_in[2]` | Input | CS_N |
+| `uo_out[0]` | Output | MISO |
+| `uo_out[1]` | Output | Busy |
+| `uo_out[2]` | Output | Done |
+| `uo_out[3]` | Output | Error |
 
-Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
+## Running Tests
 
-To learn more and get started, visit https://tinytapeout.com.
+```sh
+cd test
+make clean && make
+```
 
-## Set up your Verilog project
-
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
-
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
-
-## Enable GitHub actions to build the results page
-
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
+5 tests: protocol, eml scalar, multiply, exp/ln sweep, 38-function composition.
 
 ## Resources
 
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
-
-## What next?
-
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
+- [Project details](docs/info.md)
+- [Test documentation](test/README.md)
+- [Tiny Tapeout](https://tinytapeout.com)
